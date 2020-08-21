@@ -5,37 +5,38 @@
 
 bool skipMode = false;
 
-const GUI_RECT rect_of_mode[MODE_COUNT]={
+const GUI_RECT rect_of_mode[SELECTMODE]={
   //2 select icon
   {1*SPACE_SELEX+0*ICON_WIDTH, SPACE_SELEY, 1*SPACE_SELEX+1*ICON_WIDTH, SPACE_SELEY+ICON_HEIGHT},
   {3*SPACE_SELEX+1*ICON_WIDTH, SPACE_SELEY, 3*SPACE_SELEX+2*ICON_WIDTH, SPACE_SELEY+ICON_HEIGHT},
 };
 
-const uint8_t icon_mode [MODE_COUNT]={
-  ICON_MARLIN,
-  ICON_BIGTREETECH,
+u32 select_mode [SELECTMODE]={
+    // ICON_MARLIN,
+    ICON_MARLIN,
+    ICON_BIGTREETECH,
 };
 
-void drawModeIcon(void)
+void show_selectICON(void)
 {
-  for(uint8_t i = 0;i < MODE_COUNT; i++)
+  for(u8 i=0;i<SELECTMODE;i++)
   {
-    ICON_ReadDisplay(rect_of_mode[i].x0, rect_of_mode[i].y0, icon_mode[i]);
+    lcd_frame_display(rect_of_mode[i].x0, rect_of_mode[i].y0, ICON_WIDTH, ICON_HEIGHT,ICON_ADDR(select_mode[i]));
   }
 
-  const GUI_RECT mode_title_rect[MODE_COUNT] = {
-    {0,           rect_of_mode[0].y1 + BYTE_HEIGHT/2,   text_startx,  rect_of_mode[0].y1 + BYTE_HEIGHT/2 + BYTE_HEIGHT},
-    {text_startx, rect_of_mode[0].y1 + BYTE_HEIGHT/2,   LCD_WIDTH,    rect_of_mode[0].y1 + BYTE_HEIGHT/2 + BYTE_HEIGHT},
-  };
+	const GUI_RECT mode_title_rect[SELECTMODE] = {
+		{0,        		rect_of_mode[0].y1 + BYTE_HEIGHT/2, 	text_startx,  rect_of_mode[0].y1 + BYTE_HEIGHT/2 + BYTE_HEIGHT},
+    {text_startx, rect_of_mode[0].y1 + BYTE_HEIGHT/2, 	LCD_WIDTH, 		rect_of_mode[0].y1 + BYTE_HEIGHT/2 + BYTE_HEIGHT},
+	};
 
-  GUI_RestoreColorDefault();
-
-  if(infoSettings.marlin_type == LCD12864)
-    GUI_DispStringInPrect(&mode_title_rect[0],(uint8_t *)"LCD12864 Mode");
+	//GUI_ClearPrect(&mode_title_rect[1]);
+	//GUI_ClearPrect(&mode_title_rect[0]);
+  if(infoSettings.marlin_type == 1)
+	  GUI_DispStringInPrect(&mode_title_rect[0],(uint8_t *)"LCD12864 Mode");
   else
     GUI_DispStringInPrect(&mode_title_rect[0],(uint8_t *)"LCD2004 Mode");
 
-  GUI_DispStringInPrect(&mode_title_rect[1],(uint8_t *)"Touch Mode");
+	GUI_DispStringInPrect(&mode_title_rect[1],(uint8_t *)"Touch Mode");
 }
 
 bool LCD_ReadPen(uint16_t intervals)
@@ -57,19 +58,29 @@ bool LCD_ReadPen(uint16_t intervals)
 
 MKEY_VALUES MKeyGetValue(void)
 {
-  return (MKEY_VALUES)KEY_GetValue(COUNT(rect_of_mode), rect_of_mode);
+  return (MKEY_VALUES)KEY_GetValue(sizeof(rect_of_mode)/sizeof(rect_of_mode[0]), rect_of_mode);
 }
 
-void drawSelectedMode(int8_t nowMode)
+void selectmode(int8_t  nowMode)
 {
-  const uint8_t border_off = 4;
-  for (uint8_t i = 0; i < MODE_COUNT; i++)
+
+	GUI_RestoreColorDefault();
+	u8 border_off = 4;
+
+  if(nowMode==SERIAL_TSC)
   {
-    GUI_SetColor(i == nowMode ? infoSettings.marlin_mode_font_color : BACKGROUND_COLOR);
-    GUI_DrawRect(rect_of_mode[i].x0 - border_off, rect_of_mode[i].y0 - border_off,
-                 rect_of_mode[i].x1 + border_off, rect_of_mode[i].y1 + border_off);
+		GUI_SetColor(BACKGROUND_COLOR);
+		GUI_DrawRect(rect_of_mode[0].x0 - border_off, rect_of_mode[0].y0 - border_off,rect_of_mode[0].x1 + border_off, rect_of_mode[0].y1 + border_off);
+		GUI_SetColor(YELLOW);
+		GUI_DrawRect(rect_of_mode[1].x0 - border_off, rect_of_mode[1].y0 - border_off,rect_of_mode[1].x1 + border_off, rect_of_mode[1].y1 + border_off);
   }
-  GUI_RestoreColorDefault();
+  else
+  {
+		GUI_SetColor(BACKGROUND_COLOR);
+		GUI_DrawRect(rect_of_mode[1].x0 - border_off, rect_of_mode[1].y0 - border_off,rect_of_mode[1].x1 + border_off, rect_of_mode[1].y1 + border_off);
+		GUI_SetColor(YELLOW);
+		GUI_DrawRect(rect_of_mode[0].x0 - border_off, rect_of_mode[0].y0 - border_off,rect_of_mode[0].x1 + border_off, rect_of_mode[0].y1 + border_off);
+  }
 }
 
 void loopCheckMode(void)
@@ -78,14 +89,9 @@ void loopCheckMode(void)
 //  IDEALLY I would like to be able to swap even when the TFT is in printing mode
 //  but before I can allow that I need a way to make sure that we swap back into the right mode (and correct screen)
 //  and I really want a reliable way to DETECT that the TFT should be in printing mode even when the print was started externally.
-  if(isPrinting() || skipMode)
-    return;
-
-  if(infoMenu.menu[infoMenu.cur] == menuMode)
-    return;
-
+    if(isPrinting() || skipMode)  return;
 //  #endif
-  if(LCD_ReadPen(LCD_CHANGE_MODE_INTERVALS) || encoder_ReadBtn(LCD_CHANGE_MODE_INTERVALS))
+  if(LCD_ReadPen(LCD_CHANGE_MODE_INTERVALS))
   {
     infoMenu.menu[++infoMenu.cur] = menuMode;
   }
@@ -93,23 +99,32 @@ void loopCheckMode(void)
 
 void menuMode(void)
 {
-  int8_t  nowMode = infoSettings.mode;
+  RADIO modeRadio = {
+    {(u8*)"Serial Touch Screen", (u8*)ST7920_BANNER_TEXT, (u8*)HD44780_BANNER_TEXT},
+    SIMULATOR_XSTART, SIMULATOR_YSTART,
+    BYTE_HEIGHT*2, 2,
+    0
+    };
 
+  MKEY_VALUES  key_num;
+  bool keyback = false;
+
+  int16_t /*nowEncoder =*/ encoderPosition = 0;
+  int8_t  nowMode = modeRadio.select = infoSettings.mode;
+
+  GUI_Clear(BACKGROUND_COLOR);
+  //RADIO_Create(&modeRadio);
   if (infoSettings.serial_alwaysOn != 1)
   {
     Serial_ReSourceDeInit();
   }
   resetInfoFile();
+  SD_DeInit();
 
-  #if !defined(MKS_32_V1_4)
-    //causes hang if we deinit spi1
-    SD_DeInit();
-  #endif
-
-  GUI_Clear(infoSettings.bg_color);
-  drawModeIcon();
-  drawSelectedMode(nowMode);
+  show_selectICON();
   TSC_ReDrawIcon = NULL; // Disable icon redraw callback function
+
+  selectmode(nowMode);
 
   #if LCD_ENCODER_SUPPORT
     while(!XPT2046_Read_Pen() || encoder_ReadBtn(LCD_BUTTON_INTERVALS));      //wait for button release
@@ -117,41 +132,50 @@ void menuMode(void)
     while(!XPT2046_Read_Pen());      //wait for touch release
   #endif
 
-  #if LCD_ENCODER_SUPPORT
-    encoderPosition = 0;
-  #endif
   while(infoMenu.menu[infoMenu.cur] == menuMode)
   {
-    MKEY_VALUES key_num = MKeyGetValue();
+    key_num = MKeyGetValue();
 
-    if(key_num == MKEY_0 || key_num == MKEY_1)
+    if(encoderPosition)
     {
-      nowMode = key_num;
-      break;
+      nowMode = limitValue(0, nowMode + encoderPosition, modeRadio.num - 1);
+      selectmode(nowMode);
+      encoderPosition = 0;
     }
 
     #if LCD_ENCODER_SUPPORT
-      if(encoderPosition)
-      {
-        nowMode = NOBEYOND(0, nowMode + encoderPosition, MODE_COUNT - 1);
-        drawSelectedMode(nowMode);
-        encoderPosition = 0;
-      }
-
       if(encoder_ReadBtn(LCD_BUTTON_INTERVALS))
       {
         break;
       }
       loopCheckEncoderSteps();
-    #endif
-
-    #ifdef LCD_LED_PWM_CHANNEL
-      loopDimTimer();
+      loopCheckEncoder();
     #endif
 
     if (infoSettings.serial_alwaysOn == 1)
     {
       loopBackEnd();
+    }
+
+    if(key_num==MKEY_1)
+		{
+      keyback = true;
+      nowMode = SERIAL_TSC;
+		}
+		if(key_num==MKEY_0)
+		{
+      keyback = true;
+      nowMode = Marlin;
+		}
+
+    if(keyback)
+    {
+      #if LCD_ENCODER_SUPPORT
+        sendEncoder(2);
+        sendEncoder(1);
+			#endif
+      while(!XPT2046_Read_Pen()){};
+			break;
     }
   }
 
@@ -163,3 +187,4 @@ void menuMode(void)
 
   infoMenuSelect();
 }
+

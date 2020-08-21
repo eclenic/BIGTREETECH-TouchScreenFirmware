@@ -19,10 +19,10 @@ typedef struct
   uint8_t index_r; // Ring buffer read position
   uint8_t index_w; // Ring buffer write position
   uint8_t count;   // Count of commands in the queue
-}GCODE_QUEUE;
+}QUEUE;
 
-extern GCODE_QUEUE infoCmd;
-extern GCODE_QUEUE infoCacheCmd;
+extern QUEUE infoCmd;
+extern QUEUE infoCacheCmd;
 
 
 bool storeCmd(const char * format,...);

@@ -2,8 +2,8 @@
 #include "includes.h"
 
 
-GCODE_QUEUE infoCmd;       //
-GCODE_QUEUE infoCacheCmd;  // Only when heatHasWaiting() is false the cmd in this cache will move to infoCmd queue.
+QUEUE infoCmd;       //
+QUEUE infoCacheCmd;  // Only when heatHasWaiting() is false the cmd in this cache will move to infoCmd queue.
 
 static u8 cmd_index=0;
 
@@ -41,23 +41,13 @@ bool static startsWith(TCHAR *search, TCHAR *string)
   return (strstr(string, search) - string == cmd_index) ? true : false;
 }
 
-// Common store cmd
-void commonStoreCmd(GCODE_QUEUE *pQueue, const char* format, va_list va)
-{
-  vsnprintf(pQueue->queue[pQueue->index_w].gcode, CMD_MAX_CHAR, format, va);
-
-  pQueue->queue[pQueue->index_w].src = SERIAL_PORT;
-  pQueue->index_w = (pQueue->index_w + 1) % CMD_MAX_LIST;
-  pQueue->count++;
-}
-
 // Store gcode cmd to infoCmd queue, this cmd will be sent by UART in sendQueueCmd(),
 // If the infoCmd queue is full, reminde in title bar.
 bool storeCmd(const char * format,...)
 {
   if (strlen(format) == 0) return false;
 
-  GCODE_QUEUE *pQueue = &infoCmd;
+  QUEUE *pQueue = &infoCmd;
 
   if (pQueue->count >= CMD_MAX_LIST)
   {
@@ -65,10 +55,14 @@ bool storeCmd(const char * format,...)
     return false;
   }
 
-  va_list va;
-  va_start(va, format);
-  commonStoreCmd(pQueue, format, va);
-  va_end(va);
+  my_va_list ap;
+  my_va_start(ap,format);
+  my_vsprintf(pQueue->queue[pQueue->index_w].gcode, format, ap);
+  my_va_end(ap);
+  pQueue->queue[pQueue->index_w].src = SERIAL_PORT;
+
+  pQueue->index_w = (pQueue->index_w + 1) % CMD_MAX_LIST;
+  pQueue->count++;
 
   return true;
 }
@@ -79,7 +73,7 @@ void mustStoreCmd(const char * format,...)
 {
   if (strlen(format) == 0) return;
 
-  GCODE_QUEUE *pQueue = &infoCmd;
+  QUEUE *pQueue = &infoCmd;
 
   if(pQueue->count >= CMD_MAX_LIST) reminderMessage(LABEL_BUSY, STATUS_BUSY);
 
@@ -88,10 +82,14 @@ void mustStoreCmd(const char * format,...)
     loopProcess();
   }
 
-  va_list va;
-  va_start(va, format);
-  commonStoreCmd(pQueue, format, va);
-  va_end(va);
+  my_va_list ap;
+  my_va_start(ap,format);
+  my_vsprintf(pQueue->queue[pQueue->index_w].gcode, format, ap);
+  my_va_end(ap);
+  pQueue->queue[pQueue->index_w].src = SERIAL_PORT;
+
+  pQueue->index_w = (pQueue->index_w + 1) % CMD_MAX_LIST;
+  pQueue->count++;
 }
 
 // Store Script cmd to infoCmd queue
@@ -101,10 +99,10 @@ void mustStoreScript(const char * format,...)
   if (strlen(format) == 0) return;
 
   char script[256];
-  va_list va;
-  va_start(va, format);
-  vsnprintf(script, 256, format, va);
-  va_end(va);
+  my_va_list ap;
+  my_va_start(ap,format);
+  my_vsprintf(script, format, ap);
+  my_va_end(ap);
 
   char *p = script;
   uint16_t i = 0;
@@ -127,7 +125,7 @@ void mustStoreScript(const char * format,...)
 bool storeCmdFromUART(uint8_t port, const char * gcode)
 {
   if (strlen(gcode) == 0) return false;
-  GCODE_QUEUE *pQueue = &infoCmd;
+  QUEUE *pQueue = &infoCmd;
 
   if (pQueue->count >= CMD_MAX_LIST)
   {
@@ -135,7 +133,7 @@ bool storeCmdFromUART(uint8_t port, const char * gcode)
     return false;
   }
 
-  strncpy(pQueue->queue[pQueue->index_w].gcode, gcode, CMD_MAX_CHAR);
+  strcpy(pQueue->queue[pQueue->index_w].gcode, gcode);
 
   pQueue->queue[pQueue->index_w].src = port;
   pQueue->index_w = (pQueue->index_w + 1) % CMD_MAX_LIST;
@@ -148,7 +146,7 @@ bool storeCmdFromUART(uint8_t port, const char * gcode)
 // this function is only for restore printing status after power failed.
 void mustStoreCacheCmd(const char * format,...)
 {
-  GCODE_QUEUE *pQueue = &infoCacheCmd;
+  QUEUE *pQueue = &infoCacheCmd;
 
   if(pQueue->count == CMD_MAX_LIST) reminderMessage(LABEL_BUSY, STATUS_BUSY);
 
@@ -157,10 +155,13 @@ void mustStoreCacheCmd(const char * format,...)
     loopProcess();
   }
 
-  va_list va;
-  va_start(va, format);
-  commonStoreCmd(pQueue, format, va);
-  va_end(va);
+  my_va_list ap;
+  my_va_start(ap,format);
+  my_vsprintf(pQueue->queue[pQueue->index_w].gcode, format, ap);
+  my_va_end(ap);
+
+  pQueue->index_w = (pQueue->index_w + 1) % CMD_MAX_LIST;
+  pQueue->count++;
 }
 
 // Move gcode cmd from infoCacheCmd to infoCmd queue.
@@ -299,7 +300,7 @@ void sendQueueCmd(void)
               if (mountFS() && (f_open(&tmp, infoFile.title, FA_OPEN_EXISTING | FA_READ) == FR_OK) )
               {
                 char buf[10];
-                sprintf(buf, "%d", f_size(&tmp));
+                my_sprintf(buf, "%d", f_size(&tmp));
                 Serial_Puts(SERIAL_PORT_2, "File opened: ");
                 Serial_Puts(SERIAL_PORT_2, infoFile.title);
                 Serial_Puts(SERIAL_PORT_2, " Size: ");
@@ -364,7 +365,7 @@ void sendQueueCmd(void)
                 Serial_Puts(SERIAL_PORT_2, ".\n");
               }
                 char buf[55];
-                sprintf(buf, "%s printing byte %d/%d\n",(infoFile.source==TFT_SD)?"TFT SD":"TFT USB", getPrintCur(),getPrintSize());
+                my_sprintf(buf, "%s printing byte %d/%d\n",(infoFile.source==TFT_SD)?"TFT SD":"TFT USB", getPrintCur(),getPrintSize());
                 Serial_Puts(SERIAL_PORT_2, buf);
                 Serial_Puts(SERIAL_PORT_2, "ok\n");
                 purgeLastCmd();
@@ -432,11 +433,11 @@ void sendQueueCmd(void)
             {
               char buf[50];
               Serial_Puts(SERIAL_PORT_2, "FIRMWARE_NAME: " FIRMWARE_NAME " SOURCE_CODE_URL:https://github.com/bigtreetech/BIGTREETECH-TouchScreenFirmware\n");
-              sprintf(buf, "Cap:HOTEND_NUM:%d\n", infoSettings.hotend_count);
+              my_sprintf(buf, "Cap:HOTEND_NUM:%d\n", infoSettings.hotend_count);
               Serial_Puts(SERIAL_PORT_2, buf);
-              sprintf(buf, "Cap:EXTRUDER_NUM:%d\n", infoSettings.ext_count);
+              my_sprintf(buf, "Cap:EXTRUDER_NUM:%d\n", infoSettings.ext_count);
               Serial_Puts(SERIAL_PORT_2, buf);
-              sprintf(buf, "Cap:FAN_NUM:%d\n", infoSettings.fan_count);
+              my_sprintf(buf, "Cap:FAN_NUM:%d\n", infoSettings.fan_count);
               Serial_Puts(SERIAL_PORT_2, buf);
               Serial_Puts(SERIAL_PORT_2, "ok\n");
               purgeLastCmd();
@@ -496,25 +497,20 @@ void sendQueueCmd(void)
 
         case 106: //M106
         {
-          uint8_t i = cmd_seen('P') ? cmd_value() : 0;
-          if(cmd_seen('S'))
-          {
-            fanSetSpeed(i, cmd_value());
-          }
-          else if (!cmd_seen('\n'))
-          {
-            char buf[12];
-            sprintf(buf, "S%u\n", fanGetSpeed(i));
-            strcat(infoCmd.queue[infoCmd.index_r].gcode,(const char*)buf);
-            fanSetSendWaiting(i, false);
-          }
+            u8 i = 0;
+            if(cmd_seen('P')) i = cmd_value();
+            if(cmd_seen('S'))
+            {
+              fanSetSpeed(i, cmd_value());
+            }
           break;
         }
 
         case 107: //M107
         {
-          uint8_t i = cmd_seen('P') ? cmd_value() : 0;
-          fanSetSpeed(i, 0);
+            u8 i = 0;
+            if(cmd_seen('P')) i = cmd_value();
+            fanSetSpeed(i, 0);
           break;
         }
 
@@ -573,10 +569,10 @@ void sendQueueCmd(void)
               }
             }
             statusScreen_setMsg((u8 *)"M117", (u8 *)&message);
-//            if (infoMenu.menu[infoMenu.cur] != menuStatus)
-//            {
-//              popupReminder(DIALOG_TYPE_INFO, (u8 *)"M117", (u8 *)&message);
-//            }
+            if (infoMenu.menu[infoMenu.cur] != menuStatus)
+            {
+              popupReminder(DIALOG_TYPE_INFO, (u8 *)"M117", (u8 *)&message);
+            }
           }
           break;
 
@@ -699,7 +695,7 @@ void sendQueueCmd(void)
             }
             break;
         #endif
-
+        
         case 420: //M420
           if(cmd_seen('S')) {
             infoSettings.autoLevelState = cmd_value();
@@ -710,13 +706,12 @@ void sendQueueCmd(void)
           if(cmd_seen('Z')) setParameter(P_ABL_STATE,1,cmd_float());
         break;
 
-        #ifdef NOZZLE_PAUSE_M600_M601
-          case 600: //M600/M601 pause print
-          case 601:
+        #ifdef NOZZLE_PAUSE_M601
+          case 601: //M601 pause print
             if (isPrinting())
             {
               setPrintPause(true, false);
-              // prevent sending M600/M601 to marlin
+              // prevent sending M601 to marlin
               purgeLastCmd();
               return;
             }

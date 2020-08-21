@@ -1,10 +1,20 @@
 #ifndef _SPI_SLAVE_H_
 #define _SPI_SLAVE_H_
 
-#include "includes.h"
+#include "variants.h"
 
-void SPI_Slave(CIRCULAR_QUEUE *queue);
+#define SPI_SLAVE_MAX (1024 * 5)
+
+typedef struct
+{
+  u8  *data;
+  u16 rIndex;
+  u16 wIndex;
+}SPI_QUEUE;
+
+extern SPI_QUEUE SPISlave;
+
+void SPI_Slave(void);
 void SPI_SlaveDeInit(void);
-bool SPI_SlaveGetData(uint8_t *data);
-
+void SPI_Slave_CS_Config(void);
 #endif

@@ -320,7 +320,8 @@ void resetConfig(void)
   tempCG.count = n;
 
   //restore strings store
-  strcpy(tempST.marlin_title, MARLIN_BANNER_TEXT);
+  strcpy(tempST.lcd12864_title,ST7920_BANNER_TEXT);
+  strcpy(tempST.lcd2004_title,HD44780_BANNER_TEXT);
 
   for (int i = 0; i < PREHEAT_COUNT;i++)
   {
@@ -349,7 +350,7 @@ void drawProgressPage(void)
 
 void drawProgress(void){
   char tempstr[50];
-  sprintf(tempstr,"Total keywords found: %d",foundkeys);
+  my_sprintf(tempstr,"Total keywords found: %d",foundkeys);
   GUI_DispString(pointProgressText.x,pointProgressText.y,(u8*)tempstr);
   u16 p = map(configFile.cur,0,configFile.size, rectProgressframe.x0,rectProgressframe.x1);
   GUI_FillRect(rectProgressframe.x0,rectProgressframe.y0,p,rectProgressframe.y1);
@@ -380,13 +381,13 @@ void showError(CONFIG_STATS stat)
   case CSTAT_FILE_NOTOPEN:
     GUI_SetColor(RED);
     ttl = "Error:";
-    sprintf(tempstr, "Unable to open %s", CONFIG_FILE_PATH);
+    my_sprintf(tempstr, "Unable to open %s", CONFIG_FILE_PATH);
     txt = tempstr;
     break;
   case CSTAT_STORAGE_LOW:
     GUI_SetColor(RED);
     ttl = "Write Error:";
-    sprintf(tempstr, "Config size is larger than allocated size", CONFIG_FILE_PATH);
+    my_sprintf(tempstr, "Config size is larger than allocated size", CONFIG_FILE_PATH);
     txt = tempstr;
     break;
   case CSTAT_FILE_INVALID:
@@ -482,14 +483,6 @@ void parseConfigKey(u16 index)
       infoSettings.file_listmode = getOnOff();
     break;
 
-  case C_INDEX_ACK_NOTIFICATION:
-    {
-      u8 i = config_int();
-      if (inLimit(i,0,2))
-        infoSettings.ack_notification = i;
-      break;
-    }
-
   //---------------------------------------------------------Marlin Mode Settings (Only for TFT35_V3.0/TFT24_V1.1/TFT28V3.0)
 
 #if defined(ST7920_SPI) || defined(LCD2004_simulator)
@@ -524,14 +517,25 @@ void parseConfigKey(u16 index)
       infoSettings.marlin_type = config_int();
     break;
 
-  case C_INDEX_MARLIN_TITLE:
+  case C_INDEX_LCD12864_TITLE:
     {
       char * pchr;
       pchr = strrchr(cur_line,':') + 1;
       int utf8len = getUTF8Length((u8*)pchr);
       int bytelen = strlen(pchr) + 1;
       if (inLimit(utf8len,NAME_MIN_LENGTH,MAX_STRING_LENGTH) && inLimit(bytelen,NAME_MIN_LENGTH,MAX_GCODE_LENGTH))
-        strcpy(configStringsStore->marlin_title, pchr);
+        strcpy(configStringsStore->lcd12864_title, pchr);
+    }
+    break;
+
+  case C_INDEX_LCD2004_TITLE:
+    {
+      char * pchr;
+      pchr = strrchr(cur_line,':') + 1;
+      int utf8len = getUTF8Length((u8*)pchr);
+      int bytelen = strlen(pchr) + 1;
+      if (inLimit(utf8len,NAME_MIN_LENGTH,MAX_STRING_LENGTH) && inLimit(bytelen,NAME_MIN_LENGTH,MAX_GCODE_LENGTH))
+        strcpy(configStringsStore->lcd2004_title, pchr);
     }
     break;
 
@@ -544,11 +548,11 @@ void parseConfigKey(u16 index)
       infoSettings.hotend_count = config_int();
     break;
 
-  case C_INDEX_HEATED_BED:
+  case C_INDEX_BED_EN:
       infoSettings.bed_en = getOnOff();
     break;
 
-  case C_INDEX_HEATED_CHAMBER:
+  case C_INDEX_CHAMBER_EN:
       infoSettings.chamber_en = getOnOff();
     break;
 
@@ -802,8 +806,6 @@ void parseConfigKey(u16 index)
   case C_INDEX_PREHEAT_NAME_2:
   case C_INDEX_PREHEAT_NAME_3:
   case C_INDEX_PREHEAT_NAME_4:
-  case C_INDEX_PREHEAT_NAME_5:
-  case C_INDEX_PREHEAT_NAME_6:
   {
     char pchr[LINE_MAX_CHAR];
     strcpy(pchr, strrchr(cur_line, ':') + 1);
@@ -819,8 +821,6 @@ void parseConfigKey(u16 index)
   case C_INDEX_PREHEAT_TEMP_2:
   case C_INDEX_PREHEAT_TEMP_3:
   case C_INDEX_PREHEAT_TEMP_4:
-  case C_INDEX_PREHEAT_TEMP_5:
-  case C_INDEX_PREHEAT_TEMP_6:
     {
         int val_index = index - C_INDEX_PREHEAT_TEMP_1;
       if (key_seen("B"))
@@ -904,24 +904,13 @@ void parseConfigKey(u16 index)
 #endif
   //---------------------------------------------------------other device specific settings
 #ifdef BUZZER_PIN
-  case C_INDEX_TOUCH_SOUND:
+  case C_INDEX_BUZZER_ON:
     if (inLimit(config_int(),0,1))
       {
-        infoSettings.touchSound = config_int();
-      }
-    break;
-
-  case C_INDEX_TOAST_SOUND:
-    if (inLimit(config_int(),0,1))
-      {
-        infoSettings.toastSound = config_int();
-      }
-    break;
-
-  case C_INDEX_ALERT_SOUND:
-    if (inLimit(config_int(),0,1))
-      {
-        infoSettings.alertSound = config_int();
+        if (config_int() == 0)
+          infoSettings.silent = 1;
+        else
+          infoSettings.silent = 0;
       }
     break;
 #endif
@@ -931,21 +920,12 @@ void parseConfigKey(u16 index)
     if (inLimit(config_int(), 0, LED_COLOR_NUM-1))
       infoSettings.knob_led_color = config_int();
     break;
-
-#ifdef LCD_LED_PWM_CHANNEL
-  case C_INDEX_KNOB_LED_IDLE:
-    if (inLimit(config_int(), 0, 1))
-      infoSettings.knob_led_idle = config_int();
-    break;
-#endif //lcd_led_pwm
 #endif
 
 #ifdef LCD_LED_PWM_CHANNEL
   case C_INDEX_BRIGHTNESS:
-    if (inLimit(config_int(), 0, ITEM_BRIGHTNESS_NUM - 1))
+    if (inLimit(config_int(), 0, ITEM_BRIGHTNESS_NUM-1))
       infoSettings.lcd_brightness = config_int();
-    if (infoSettings.lcd_brightness == 0)
-      infoSettings.lcd_brightness = 1; //If someone set it to 0 set it to 1
     break;
   case C_INDEX_BRIGHTNESS_IDLE:
     if (inLimit(config_int(), 0, ITEM_BRIGHTNESS_NUM-1))

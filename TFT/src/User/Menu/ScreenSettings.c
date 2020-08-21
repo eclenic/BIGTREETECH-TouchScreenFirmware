@@ -4,6 +4,14 @@
 
 #ifdef BUZZER_PIN // Speaker
   #define BUZZER_KEY_INDEX KEY_ICON_3
+
+  #define ITEM_SILENT_NUM 2
+  const ITEM itemSilent[ITEM_SILENT_NUM] = {
+  // icon                       label
+    {ICON_SILENT_OFF,           LABEL_SILENT_OFF},
+    {ICON_SILENT_ON,            LABEL_SILENT_ON},
+  };
+  const  u8 item_silent[ITEM_SILENT_NUM] = {0, 1};
 #endif
 
 
@@ -39,7 +47,7 @@ void menuLanguage(void)
   }
   infoSettings.language = tmp_language;
 
-  listWidgetCreate(title, totalItems, COUNT(totalItems), infoSettings.language / LISTITEM_PER_PAGE);
+  listWidgetCreat(title, totalItems, COUNT(totalItems), infoSettings.language / LISTITEM_PER_PAGE);
 
   while (infoMenu.menu[infoMenu.cur] == menuLanguage)
   {
@@ -81,7 +89,7 @@ void menuLanguage(void)
 
   if(memcmp(&now, &infoSettings, sizeof(SETTINGS)))
   {
-    statusScreen_setReady(); // restore msg buffer when language is changed
+    statusScreen_setMsg(textSelect(LABEL_STATUS), textSelect(infoHost.connected ? LABEL_READY : LABEL_UNCONNECTED)); // restore msg buffer when language is changed
     storePara();
   }
 }
@@ -127,7 +135,7 @@ void menuSimulatorBackGroundColor(void)
     totalItems[i].titlelabel = lcd_colors_names[i];
   }
 
-  listWidgetCreate(title, totalItems, COUNT(totalItems), cur_item/ LISTITEM_PER_PAGE);
+  listWidgetCreat(title, totalItems, COUNT(totalItems), cur_item/ LISTITEM_PER_PAGE);
 
   while (infoMenu.menu[infoMenu.cur] == menuSimulatorBackGroundColor)
   {
@@ -191,7 +199,7 @@ void menuSimulatorFontColor(void)
     totalItems[i].titlelabel = lcd_colors_names[i];
   }
 
-  listWidgetCreate(title, totalItems, COUNT(totalItems), cur_item/ LISTITEM_PER_PAGE);
+  listWidgetCreat(title, totalItems, COUNT(totalItems), cur_item/ LISTITEM_PER_PAGE);
 
   while (infoMenu.menu[infoMenu.cur] == menuSimulatorFontColor)
   {
@@ -236,75 +244,6 @@ void menuSimulatorFontColor(void)
 }
 #endif
 
-#ifdef BUZZER_PIN
-
-void menuSoundSettings(void)
-{
-  LISTITEMS sounditems = {
-  // title
-  LABEL_FEATURE_SETTINGS,
-  // icon                 ItemType      Item Title        item value text(only for custom value)
-  {
-    {ICONCHAR_TOGGLE_ON, LIST_TOGGLE,  LABEL_TOUCH_SOUND,  LABEL_BACKGROUND},
-    {ICONCHAR_TOGGLE_ON, LIST_TOGGLE,  LABEL_ALERT_SOUND,  LABEL_BACKGROUND},
-    {ICONCHAR_TOGGLE_ON, LIST_TOGGLE,  LABEL_TOAST_SOUND,  LABEL_BACKGROUND},
-    {ICONCHAR_BACKGROUND, LIST_LABEL,  LABEL_BACKGROUND,   LABEL_BACKGROUND},
-    {ICONCHAR_BACKGROUND, LIST_LABEL,  LABEL_BACKGROUND,   LABEL_BACKGROUND},
-    {ICONCHAR_BACKGROUND, LIST_LABEL,  LABEL_BACKGROUND,   LABEL_BACKGROUND},
-    {ICONCHAR_BACKGROUND, LIST_LABEL,  LABEL_BACKGROUND,   LABEL_BACKGROUND},
-    {ICONCHAR_BACK,       LIST_LABEL,  LABEL_BACKGROUND,   LABEL_BACKGROUND},}
-  };
-
-  sounditems.items[0].icon = (infoSettings.touchSound == 1) ? ICONCHAR_TOGGLE_ON : ICONCHAR_TOGGLE_OFF;
-  sounditems.items[1].icon = (infoSettings.alertSound == 1) ? ICONCHAR_TOGGLE_ON : ICONCHAR_TOGGLE_OFF;
-  sounditems.items[2].icon = (infoSettings.toastSound == 1) ? ICONCHAR_TOGGLE_ON : ICONCHAR_TOGGLE_OFF;
-
-  KEY_VALUES key_num = KEY_IDLE;
-  SETTINGS now = infoSettings;
-
-  menuDrawListPage(&sounditems);
-
-  while (infoMenu.menu[infoMenu.cur] == menuSoundSettings)
-  {
-    key_num = menuKeyGetValue();
-    switch(key_num)
-    {
-    case KEY_ICON_0:
-      infoSettings.touchSound = (infoSettings.touchSound + 1) % 2;
-      sounditems.items[key_num].icon = (infoSettings.touchSound == 1) ? ICONCHAR_TOGGLE_ON : ICONCHAR_TOGGLE_OFF;
-      menuDrawListItem(&sounditems.items[key_num], key_num);
-      break;
-
-    case KEY_ICON_1:
-      infoSettings.alertSound = (infoSettings.alertSound + 1) % 2;
-      sounditems.items[key_num].icon = (infoSettings.alertSound == 1) ? ICONCHAR_TOGGLE_ON : ICONCHAR_TOGGLE_OFF;
-      menuDrawListItem(&sounditems.items[key_num], key_num);
-      break;
-
-    case KEY_ICON_2:
-      infoSettings.toastSound = (infoSettings.toastSound + 1) % 2;
-      sounditems.items[key_num].icon = (infoSettings.toastSound == 1) ? ICONCHAR_TOGGLE_ON : ICONCHAR_TOGGLE_OFF;
-      menuDrawListItem(&sounditems.items[key_num], key_num);
-      break;
-
-    case KEY_ICON_7:
-      infoMenu.cur--;
-      break;
-
-    default:
-      break;
-    }
-    loopProcess();
-  }
-
-  if (memcmp(&now, &infoSettings, sizeof(SETTINGS)))
-  {
-    storePara();
-  }
-} //menuSoundSettings
-
-#endif
-
 void menuScreenSettings(void)
 {
   MENUITEMS screenSettingsItems = {
@@ -315,47 +254,62 @@ void menuScreenSettings(void)
     {ICON_TOUCHSCREEN_ADJUST,   LABEL_TOUCHSCREEN_ADJUST},
     {ICON_LANGUAGE,             LABEL_LANGUAGE},
     {ICON_BACKGROUND,           LABEL_BACKGROUND},
+  #ifdef ST7920_SPI
+    {ICON_BKCOLOR,              LABEL_BACKGROUND},
+    {ICON_FONTCOLOR,            LABEL_BACKGROUND},
+  #else
     {ICON_BACKGROUND,           LABEL_BACKGROUND},
     {ICON_BACKGROUND,           LABEL_BACKGROUND},
+  #endif
     {ICON_BACKGROUND,           LABEL_BACKGROUND},
-    {ICON_BACK,                 LABEL_BACK}}
+    {ICON_BACK,                 LABEL_BACK},}
   };
 
-  //load buzzer icon
+  KEY_VALUES key_num = KEY_IDLE;
+  SETTINGS now = infoSettings;
+
   #ifdef BUZZER_PIN
-    screenSettingsItems.items[BUZZER_KEY_INDEX].icon = ICON_SOUND;
-    screenSettingsItems.items[BUZZER_KEY_INDEX].label.index = LABEL_SOUND;
+    u8 item_silent_i = 0;
+    for(u8 i = 0; i < ITEM_SILENT_NUM; i++)
+    {
+      if(infoSettings.silent == item_silent[i])
+      {
+        item_silent_i = i;
+        screenSettingsItems.items[BUZZER_KEY_INDEX] = itemSilent[i];
+      }
+    }
   #endif
 
   #ifdef ST7920_SPI
+    u8 item_marlin_bg_color_i = 0;
+    u8 item_marlin_font_color_i = 0;
     // LCD12864 background color
-    screenSettingsItems.items[LCD12864_BG_INDEX].icon = ICON_BKCOLOR;
-    screenSettingsItems.items[LCD12864_BG_INDEX].label.index = LABEL_CUSTOM;
-
-    screenSettingsItems.items[LCD12864_FN_INDEX].icon = ICON_FONTCOLOR;
-    screenSettingsItems.items[LCD12864_FN_INDEX].label.index = LABEL_CUSTOM;
-
+    bool inArry = false;
     for(u8 i = 0; i < LCD_COLOR_COUNT; i++)
     {
       if(infoSettings.marlin_mode_bg_color == lcd_colors[i])
       {
-        screenSettingsItems.items[LCD12864_BG_INDEX].label = lcd_color_names[i];
+        inArry = true;
+        item_marlin_bg_color_i = i;
+        screenSettingsItems.items[KEY_ICON_4].label = lcd_color_names[item_marlin_bg_color_i];
       }
     }
+    if (!inArry) screenSettingsItems.items[KEY_ICON_4].label.index = LABEL_CUSTOM;
 
     // LCD12864 font color
+    inArry = false;
     for(u8 i = 0; i < LCD_COLOR_COUNT; i++)
     {
       if(infoSettings.marlin_mode_font_color == lcd_colors[i])
       {
-        screenSettingsItems.items[LCD12864_FN_INDEX].label = lcd_color_names[i];
+        inArry = true;
+        item_marlin_font_color_i = i;
+        screenSettingsItems.items[KEY_ICON_5].label = lcd_color_names[item_marlin_font_color_i];
       }
     }
+    if (!inArry) screenSettingsItems.items[KEY_ICON_5].label.index = LABEL_CUSTOM;
 
   #endif
-
-  KEY_VALUES key_num = KEY_IDLE;
-  SETTINGS now = infoSettings;
 
   menuDrawPage(&screenSettingsItems);
 
@@ -382,7 +336,10 @@ void menuScreenSettings(void)
 
       #ifdef BUZZER_PIN
       case BUZZER_KEY_INDEX:
-        infoMenu.menu[++infoMenu.cur] = menuSoundSettings;
+        item_silent_i = (item_silent_i + 1) % ITEM_SILENT_NUM;
+        screenSettingsItems.items[key_num] = itemSilent[item_silent_i];
+        menuDrawItem(&screenSettingsItems.items[key_num], key_num);
+        infoSettings.silent = item_silent[item_silent_i];
         break;
       #endif
 

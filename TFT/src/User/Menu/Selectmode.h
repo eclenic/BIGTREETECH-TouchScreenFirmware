@@ -6,6 +6,7 @@
 #include "stdbool.h"
 
 #define IDLE_TOUCH	0xFFFF
+#define SELECTMODE 2
 typedef enum
 {
   MKEY_0 = 0,
@@ -15,7 +16,10 @@ typedef enum
 
 extern bool skipMode;
 
+//select mode fun
+void show_selectICON(void);
 MKEY_VALUES MKeyGetValue(void);
+void selectmode(int8_t  nowMode);
 void menuMode(void);
 void loopCheckMode(void);
 

@@ -636,12 +636,6 @@ void GUI_DispStringInRectEOL(int16_t sx, int16_t sy, int16_t ex, int16_t ey, con
   }
 }
 
-void GUI_DispStringInPrectEOL(const GUI_RECT *rect, const uint8_t *p)
-{
-  GUI_DispStringInRectEOL(rect->x0, rect->y0, rect->x1, rect->y1,p);
-}
-
-
 const uint32_t GUI_Pow10[10] = {
 1 , 10, 100, 1000, 10000,
 100000, 1000000, 10000000, 100000000, 1000000000
@@ -940,13 +934,14 @@ void GUI_DrawButton(const BUTTON *button, uint8_t pressed)
 }
 
 
-void GUI_DrawWindow(const WINDOW *window, const uint8_t *title, const uint8_t *inf, bool actionBar)
+void GUI_DrawWindow(const WINDOW *window, const uint8_t *title, const uint8_t *inf)
 {
   GUI_RECT w_rect = window->rect;
 
   u16 title_height = window->titleHeight;
   //u16 action_height = window->actionBarHeight;
   u16 title_txt_y0 = w_rect.y0 + (title_height - BYTE_HEIGHT) / 2;
+
   u16 title_y1 = window->rect.y0 + window->titleHeight;
   u16 action_y0 = window->rect.y1 - window->actionBarHeight;
   u8 margin = BYTE_WIDTH/2;
@@ -959,11 +954,10 @@ void GUI_DrawWindow(const WINDOW *window, const uint8_t *title, const uint8_t *i
   GUI_SetColor(window->info.backColor);
   GUI_FillRect(w_rect.x0, title_y1, w_rect.x1, action_y0);
 
-  if (actionBar)
-  { //draw action bar backgorund
-    GUI_SetColor(window->actionBar.backColor);
-    GUI_FillRect(w_rect.x0, action_y0, w_rect.x1, w_rect.y1);
-  }
+  //draw action bar backgorund
+  GUI_SetColor(window->actionBar.backColor);
+  GUI_FillRect(w_rect.x0, action_y0, w_rect.x1, w_rect.y1);
+
   GUI_SetTextMode(GUI_TEXTMODE_TRANS);
 
   //draw window type icon
@@ -996,15 +990,10 @@ void GUI_DrawWindow(const WINDOW *window, const uint8_t *title, const uint8_t *i
     //draw title accent line
     GUI_DrawRect(w_rect.x0, title_y1 - 1, w_rect.x1, title_y1 + 1);
 
-    if (actionBar)
-    { //draw actionbar accent line
-      GUI_SetColor(GRAY);
-      GUI_DrawRect(w_rect.x0, action_y0 - 1, w_rect.x1, action_y0 + 1);
-    }
-    else
-    {
-      w_rect.y1 -= window->actionBarHeight;
-    }
+    //draw actionbar accent line
+    GUI_SetColor(GRAY);
+    GUI_DrawRect(w_rect.x0, action_y0 - 1, w_rect.x1, action_y0 + 1);
+
     //draw window border
     GUI_SetColor(window->lineColor);
     for (u8 i = 0; i < window->lineWidth; i++)
@@ -1025,4 +1014,3 @@ void GUI_DrawWindow(const WINDOW *window, const uint8_t *title, const uint8_t *i
 
     GUI_RestoreColorDefault();
 }
-

@@ -321,7 +321,7 @@ void shutdownLoop(void)
 void startShutdown(void)
 {
   char tempstr[75];
-  sprintf(tempstr, (char *)textSelect(LABEL_WAIT_TEMP_SHUT_DOWN), infoSettings.auto_off_temp);
+  my_sprintf(tempstr, (char *)textSelect(LABEL_WAIT_TEMP_SHUT_DOWN), infoSettings.auto_off_temp);
 
   for(u8 i = 0; i < infoSettings.fan_count; i++)
   {

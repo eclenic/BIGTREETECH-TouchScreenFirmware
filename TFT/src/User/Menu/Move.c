@@ -72,7 +72,7 @@ void storeMoveCmd(AXIS xyz, int8_t direction) {
 
 void menuMove(void)
 {
-  KEY_VALUES key_num;
+  KEY_VALUES  key_num;
 
   // postion table of key
   uint8_t table[TOTAL_AXIS][2] =
@@ -190,15 +190,15 @@ void drawXYZ(void){
   char tempstr[100];
   //GUI_SetColor(GANTRYLBL_BKCOLOR);
   //GUI_FillPrect(&RecXYZ);
-  sprintf(tempstr, "X:%.2f  ", getAxisLocation(0));
+  my_sprintf(tempstr, "X:%.2f  ", getAxisLocation(0));
   if (nowAxis == X_AXIS) GUI_SetColor(INFOBOX_ICON_COLOR);
   GUI_DispString(START_X+1*SPACE_X+1*ICON_WIDTH,(ICON_START_Y-BYTE_HEIGHT)/2,(u8 *)tempstr);
   GUI_SetColor(infoSettings.font_color);
-  sprintf(tempstr, "Y:%.2f  ", getAxisLocation(1));
+  my_sprintf(tempstr, "Y:%.2f  ", getAxisLocation(1));
   if (nowAxis == Y_AXIS) GUI_SetColor(INFOBOX_ICON_COLOR);
   GUI_DispString(START_X+2*SPACE_X+2*ICON_WIDTH,(ICON_START_Y-BYTE_HEIGHT)/2,(u8 *)tempstr);
   GUI_SetColor(infoSettings.font_color);
-  sprintf(tempstr, "Z:%.2f  ", getAxisLocation(2));
+  my_sprintf(tempstr, "Z:%.2f  ", getAxisLocation(2));
   if (nowAxis == Z_AXIS) GUI_SetColor(INFOBOX_ICON_COLOR);
   GUI_DispString(START_X+3*SPACE_X+3*ICON_WIDTH,(ICON_START_Y-BYTE_HEIGHT)/2,(u8 *)tempstr);
 
