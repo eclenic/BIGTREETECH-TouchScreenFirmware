@@ -5,7 +5,7 @@
 #include "coordinate.h"
 #include "Configuration.h"
 
-#define CONFIG_SUPPPORT 20200724
+#define CONFIG_SUPPPORT 20200810
 
 #define ITEM_BAUDRATE_NUM     9
 
@@ -16,7 +16,7 @@
 
 #define AXIS_NUM              (TOTAL_AXIS - 1)
 #define SPEED_COUNT           3
-#define PREHEAT_COUNT         4
+#define PREHEAT_COUNT         6
 #define CUSTOM_GCODES_COUNT   15
 #define MAX_STRING_LENGTH     20
 #define MAX_LABEL_LENGTH      7
@@ -33,8 +33,8 @@
 
 typedef enum
 {
-  SERIAL_TSC = 0,
-  Marlin,
+  MARLIN = 0,
+  SERIAL_TSC,
   MODE_COUNT
 }LCD_MODE;
 
@@ -61,14 +61,18 @@ typedef struct
   uint16_t list_border_color;
   uint16_t list_button_color;
 
-  uint8_t  silent;
+  uint8_t  touchSound;
+  uint8_t  alertSound;
+  uint8_t  toastSound;
   uint8_t  auto_off;
   uint8_t  terminalACK;
   uint8_t  invert_axis[AXIS_NUM];
   uint8_t  move_speed;
   uint8_t  knob_led_color;
+  uint8_t  knob_led_idle;
   uint8_t  persistent_info;
   uint8_t  file_listmode;
+  uint8_t  ack_notification;
 
   uint8_t  lcd_brightness;
   uint8_t  lcd_idle_brightness;
@@ -134,8 +138,7 @@ typedef struct
 }SETTINGS;
 
 typedef struct{
-char     lcd12864_title[MAX_GCODE_LENGTH+1];
-char     lcd2004_title[MAX_GCODE_LENGTH+1];
+char     marlin_title[MAX_GCODE_LENGTH+1];
 char     preheat_name[PREHEAT_COUNT][MAX_GCODE_LENGTH+1];
 }STRINGS_STORE;
 
@@ -182,7 +185,7 @@ extern MACHINESETTINGS infoMachineSettings;
 void initMachineSetting(void);
 void infoSettingsReset(void);
 void setupMachine(void);
-
+float flashUsedPercentage(void);
 
 
 
